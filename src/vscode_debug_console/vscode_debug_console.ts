@@ -45,7 +45,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                         }
 
 
-                        if (message.type === 'event' && message.event === 'output' && message.body.category === 'stdout') {
+                        if (message.type === 'event' && message.event === 'output' && (message.body.category === 'stdout'||message.body.category === 'console')) {
                             // 检查消息内容中是否包含 'package:' 前缀
                             if (message.body.output.includes('packages/') || message.body.output.includes('package:')) {
                                 let pattern = /(?:\d+\s+)?([\w/.-]+)\s+(\d+):(\d+)/;
