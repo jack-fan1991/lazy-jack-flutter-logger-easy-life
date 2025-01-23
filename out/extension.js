@@ -13,8 +13,8 @@ exports.deactivate = exports.activate = exports.APP = void 0;
 const vscode_debug_console_1 = require("./vscode_debug_console/vscode_debug_console");
 class APP {
 }
-APP.yaml = undefined;
 exports.APP = APP;
+APP.yaml = undefined;
 function activate(context) {
     return __awaiter(this, void 0, void 0, function* () {
         (0, vscode_debug_console_1.registerDebugConsole)(context);

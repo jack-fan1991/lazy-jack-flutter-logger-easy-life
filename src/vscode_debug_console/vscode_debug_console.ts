@@ -18,7 +18,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                         if (message.event === 'initialized') {
                             traverseFiles('.')
                         }
-                        if (message.type === 'event' && message.event === 'output' && message.body.category === 'stderr') {
+                        if (message.type === 'event' && message.event === 'output' ) {
                             const pattern = /([\w/.-]+):(\d+):(\d+)/;
                             // 使用正则表达式匹配字符串
                             const match = message.body.output.match(pattern);

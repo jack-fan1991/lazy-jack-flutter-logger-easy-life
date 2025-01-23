@@ -101,6 +101,6 @@ class BaseTreeDataProvider {
         }
     }
 }
-BaseTreeDataProvider.sidebar_command_onselect = 'sidebar.command.onselect';
 exports.BaseTreeDataProvider = BaseTreeDataProvider;
+BaseTreeDataProvider.sidebar_command_onselect = 'sidebar.command.onselect';
 //# sourceMappingURL=sidebar_tree_provider.js.map

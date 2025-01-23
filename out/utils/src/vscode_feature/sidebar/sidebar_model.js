@@ -8,7 +8,7 @@ var ScriptsType;
     ScriptsType["command"] = "command";
     ScriptsType["browser"] = "browser";
     ScriptsType["customer"] = "customer";
-})(ScriptsType = exports.ScriptsType || (exports.ScriptsType = {}));
+})(ScriptsType || (exports.ScriptsType = ScriptsType = {}));
 class SideBarEntryItem extends vscode.TreeItem {
     constructor(label, collapsibleState, scriptsType, description) {
         super(label, collapsibleState);
