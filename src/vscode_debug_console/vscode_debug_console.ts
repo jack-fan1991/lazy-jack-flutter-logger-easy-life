@@ -49,11 +49,12 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                             // 检查消息内容中是否包含 'package:' 前缀
                             if (message.body.output.includes('packages/') || message.body.output.includes('package:')) {
                                 let pattern = /(?:\d+\s+)?([\w/.-]+)\s+(\d+):(\d+)/;
+                                /(?:\d+\s+)?([\w/.-]+)\s+(\d+)(?::(\d+))?/
                                 if (message.body.output.includes('package:')) {
-                                    pattern = /package:([\w/.-]+):(\d+):(\d+)/;
+                                    pattern = /package:([\w/.-]+):(\d+)(?::(\d+))?/;
                                 }
                                 if (message.body.output.includes('(packages/')) {
-                                    pattern = /packages\/([\w/.-]+):(\d+):(\d+)/;
+                                    pattern = /packages:([\w/.-]+):(\d+)(?::(\d+))?/;
                                 }
                                 // 使用正则表达式匹配字符串
                                 const match = message.body.output.match(pattern);

@@ -1,8 +1,8 @@
 {
   "name": "lazy-jack-flutter-logger-easy-life",
-  "displayName": "lazyJ flutter logger easy life",
-  "description": "Make your flutter logger easy life",
-  "version": "0.0.6",
+  "displayName": "lazyJ flutter colorfulLogLife",
+  "description": "Brighten up your Flutter logs with ColorfulLogLife, making debugging more vibrant and effortless.",
+  "version": "0.0.7",
   "publisher": "jackFan",
   "icon": "image/lazy_man.png",
   "homepage": "https://marketplace.visualstudio.com/items?itemName=jackFan.lazy-jack-flutter-logger-easy-life",
