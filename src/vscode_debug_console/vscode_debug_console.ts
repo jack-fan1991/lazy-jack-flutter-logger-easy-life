@@ -36,12 +36,9 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                             if (filePath.startsWith('lib/')) {
                                 let r = allFiles.filter((e) => e.includes(filePath))
                                 if (r.length > 0) {
-                                    message.body.output = message.body.output.replace(filePath, `..//${filePath}`)
-
+                                    message.body.output = message.body.output.replace(filePath, `../${filePath}`)
                                 }
-
                             }
-
                         }
 
 
@@ -63,7 +60,6 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                 let lineNumber = '';
                                 let columnNumber = '';
                                 if (match) {
-                                    // 提取匹配到的子串
                                     filePath = match[1];
                                     lineNumber = match[2];
                                     columnNumber = match[3];
@@ -84,7 +80,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                     for (let p of packages) {
                                         if (p.name === findPackage) {
                                             packageRef = p
-                                            fullPath = packageRef.rootUri + '/' + packageRef.packageUri.replace('/', '')
+                                            fullPath = packageRef.rootUri  + packageRef.packageUri.replace('/', '')
 
                                             break
                                         }
@@ -95,9 +91,6 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                     return
                                 }
                                 let newOutput = ''
-                                if (message.body.output.includes('api_helper')) {
-                                    let a = 1
-                                }
                                 if (message.body.output.includes(`packages/${findPackage}`)) {
                                     newOutput = message.body.output.replace(`packages/${findPackage}`, ` ${fullPath}`)
                                 } else {

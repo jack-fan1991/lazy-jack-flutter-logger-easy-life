@@ -46,7 +46,7 @@ function registerDebugConsole(context) {
                                     if (filePath.startsWith('lib/')) {
                                         let r = allFiles.filter((e) => e.includes(filePath));
                                         if (r.length > 0) {
-                                            message.body.output = message.body.output.replace(filePath, `..//${filePath}`);
+                                            message.body.output = message.body.output.replace(filePath, `../${filePath}`);
                                         }
                                     }
                                 }
@@ -68,7 +68,6 @@ function registerDebugConsole(context) {
                                         let lineNumber = '';
                                         let columnNumber = '';
                                         if (match) {
-                                            // 提取匹配到的子串
                                             filePath = match[1];
                                             lineNumber = match[2];
                                             columnNumber = match[3];
@@ -89,7 +88,7 @@ function registerDebugConsole(context) {
                                             for (let p of packages) {
                                                 if (p.name === findPackage) {
                                                     packageRef = p;
-                                                    fullPath = packageRef.rootUri + '/' + packageRef.packageUri.replace('/', '');
+                                                    fullPath = packageRef.rootUri + packageRef.packageUri.replace('/', '');
                                                     break;
                                                 }
                                             }
@@ -98,16 +97,13 @@ function registerDebugConsole(context) {
                                             return;
                                         }
                                         let newOutput = '';
-                                        if (message.body.output.includes('api_helper')) {
-                                            let a = 1;
-                                        }
                                         if (message.body.output.includes(`packages/${findPackage}`)) {
                                             newOutput = message.body.output.replace(`packages/${findPackage}`, ` ${fullPath}`);
                                         }
                                         else {
                                             newOutput = message.body.output.replace(`package:${findPackage}`, ` ${fullPath}`);
                                         }
-                                        newOutput = newOutput.replace(` ${lineNumber}:${columnNumber}`, `:${lineNumber}`);
+                                        newOutput = newOutput.replace(` ${lineNumber}:${columnNumber}`, `:${lineNumber}:${columnNumber}`);
                                         message.body.output = newOutput;
                                         // vscode.debug.activeDebugConsole.appendLine(message.body.output);
                                         // console.log(message.body.output)
