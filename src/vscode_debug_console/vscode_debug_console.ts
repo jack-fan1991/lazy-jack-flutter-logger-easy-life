@@ -80,8 +80,13 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                     for (let p of packages) {
                                         if (p.name === findPackage) {
                                             packageRef = p
-                                            fullPath = packageRef.rootUri  + packageRef.packageUri.replace('/', '')
-
+                                            //fullPath = packageRef.rootUri  + packageRef.packageUri.replace('/', '')
+                                            // Retrieve user configured prefix, defaulting to "" if not set
+                                            const config = vscode.workspace.getConfiguration('FlutterLoggerEasyLife')
+                                            let prefix = config.get('customPrefix', '')
+                                            // if prefix is empty, then use packageRef.rootUri, else use prefix + '/' + findPackage + '/'
+                                            prefix = prefix === '' ? packageRef.rootUri : prefix + '/' + findPackage + '/'
+                                            fullPath = prefix + packageRef.packageUri.replace('/', '')
                                             break
                                         }
                                     }

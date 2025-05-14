@@ -28,9 +28,18 @@
     "*"
   ],
   "contributes": {
-    "snippets": [
-    
-    ]
+    "snippets": [],
+    "configuration": {
+      "title": "Flutter Logger Easy Life",
+      "type": "object",
+      "properties": {
+        "FlutterLoggerEasyLife.customPrefix": {
+          "type": "string",
+          "default": "",
+          "description": "Custom prefix for resolving file paths in debug logs."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
