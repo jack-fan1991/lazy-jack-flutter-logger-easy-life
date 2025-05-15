@@ -32,8 +32,8 @@ exports.getAndroidGradleText = getAndroidGradleText;
 function findApplicationId() {
     var _a;
     let gradleText = getAndroidGradleText();
-    let applicationId = (_a = gradleText.match(/applicationId\s+"(.*)"/)) !== null && _a !== void 0 ? _a : [];
-    return applicationId;
+    let applicationId = (_a = gradleText.match(/\s*applicationId\s*=\s*"?\s*([^"\s]+)\s*"/)) !== null && _a !== void 0 ? _a : [];
+    return applicationId[1];
 }
 exports.findApplicationId = findApplicationId;
 function gradleAddFlavor(flavor) {

@@ -15,7 +15,6 @@ const fs = require("fs");
 const path = require("path");
 const pubspec_utils_1 = require("./dart/pubspec/pubspec_utils");
 const vscode_env_utils_1 = require("../vscode_utils/vscode_env_utils");
-const logger_1 = require("../logger/logger");
 const typescript_1 = require("./typescript/typescript");
 exports.analyze_dart_git_dependency = require("./dart/pubspec/analyze_dart_git_dependency");
 exports.pubspec_utils = require("./dart/pubspec/pubspec_utils");
@@ -38,15 +37,15 @@ function onDart(onYamlParse, onError, parseYaml = false) {
         let yaml;
         const files = yield vscode.workspace.findFiles(pubspecfilePath);
         if (files.length <= 0) {
-            (0, logger_1.logError)('當前不是flutter 專案', false);
+            // logError('當前不是flutter 專案',false);
             return onError();
         }
         if (parseYaml) {
             yaml = yield (0, pubspec_utils_1.getPubspecAsMap)();
             if (yaml == undefined) {
-                (0, logger_1.logError)('onDart yaml is undefined');
-                (0, logger_1.logError)(`project => ${(0, vscode_env_utils_1.getRootPath)()}`);
-                (0, logger_1.logError)(`file => ${pubspecfilePath}`);
+                // logError('onDart yaml is undefined')
+                // logError(`project => ${getRootPath()}`)
+                // logError(`file => ${pubspecfilePath}`)
             }
         }
         return onYamlParse(yaml);
@@ -72,15 +71,15 @@ function onTypeScript(getData, errorData, returnData = false) {
         let data;
         const files = yield vscode.workspace.findFiles(filePath);
         if (files.length <= 0) {
-            console.log('當前不是TypeScript 專案');
+            // console.log('當前不是TypeScript 專案');
             return errorData();
         }
         if (returnData) {
             data = yield (0, typescript_1.getPackageJsonAsMap)();
             if (data == undefined) {
-                (0, logger_1.logError)('onTypeScript data is undefined');
-                (0, logger_1.logError)(`project => ${(0, vscode_env_utils_1.getRootPath)()}`);
-                (0, logger_1.logError)(`file => ${absPath}`);
+                // logError('onTypeScript data is undefined')
+                // logError(`project => ${getRootPath()}`)
+                // logError(`file => ${absPath}`)
             }
         }
         return getData(data);
