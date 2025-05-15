@@ -13,12 +13,10 @@
   "bugs": {
     "url": "https://github.com/jack-fan1991/lazy-jack-flutter-logger-easy-life/issues"
   },
- 
   "engines": {
     "vscode": "^1.74.0"
   },
-  "categories": [
-  ],
+  "categories": [],
   "keywords": [
     "flutter",
     "logger"
@@ -36,7 +34,8 @@
         "FlutterLoggerEasyLife.customPrefix": {
           "type": "string",
           "default": "",
-          "description": "Custom prefix for resolving file paths in debug logs."
+          "description": "Custom prefix for resolving file paths in debug logs.",
+          "scope": "resource"
         }
       }
     }

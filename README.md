@@ -30,6 +30,39 @@
 * Just import example 
     *  ![](./image/logger/good.png)
 
+### Multi-level Workspace Support
 
+This extension now supports multi-level workspace structures, handling complex project organizations:
+
+* Use `customPrefix` setting to specify custom path prefixes
+* Support for Git package dependencies with automatic relative path handling
+* Correctly resolve package paths in different workspace levels
+
+#### Configuration
+
+In VSCode settings, you can configure `FlutterLoggerEasyLife.customPrefix` to specify a custom path prefix:
+
+* Global settings: Applied to all projects
+* Workspace settings: Applied only to the current workspace, takes precedence over global settings
+
+This enables correct code navigation in multi-level project structures.
+
+#### Project Structure Example
+
+```
+foo
+├── .vscode/settings.json
+├── flutterProject
+└── flutterProject2
+```
+
+#### Settings Example
+
+```json
+// .vscode/settings.json
+{
+    "FlutterLoggerEasyLife.customPrefix": "./"
+}
+```
 
 #### If help you, please give me a star. Thanks you so much
