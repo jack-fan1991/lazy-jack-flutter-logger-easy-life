@@ -1,11 +1,20 @@
 import * as vscode from 'vscode';
 import { logError } from '../utils/src/logger/logger';
 import { getYAMLFileContent, readFileToText } from '../utils/src/vscode_utils/editor_utils';
+import { Schema } from 'js-yaml';
+import { checkGitExtensionInYamlIfDart } from '../utils/src/language_utils/dart/pubspec/analyze_dart_git_dependency';
 
 let dartToolPackage = new Map<String, any>()
 let allFiles: string[] = [];
-export async function registerDebugConsole(context: vscode.ExtensionContext) {
+let enableWarning: boolean = true
 
+export class APP {
+    public static flutterYaml: any | undefined = undefined;
+    public static flutterPackageName: any | undefined = undefined;
+}
+
+
+export async function registerDebugConsole(context: vscode.ExtensionContext) {
 
     let isDart = await traverseFiles('.');
     updateFiles()
@@ -18,7 +27,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                         if (message.event === 'initialized') {
                             traverseFiles('.')
                         }
-                        if (message.type === 'event' && message.event === 'output' ) {
+                        if (message.type === 'event' && message.event === 'output') {
                             const pattern = /([\w/.-]+):(\d+):(\d+)/;
                             // 使用正则表达式匹配字符串
                             const match = message.body.output.match(pattern);
@@ -42,7 +51,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                         }
 
 
-                        if (message.type === 'event' && message.event === 'output' && (message.body.category === 'stdout'||message.body.category === 'console')) {
+                        if (message.type === 'event' && message.event === 'output' && (message.body.category === 'stdout' || message.body.category === 'console')) {
                             // 检查消息内容中是否包含 'package:' 前缀
                             if (message.body.output.includes('packages/') || message.body.output.includes('package:')) {
                                 let pattern = /(?:\d+\s+)?([\w/.-]+)\s+(\d+):(\d+)/;
@@ -69,7 +78,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                     return
                                 }
                                 let findPackage = filePath.split('/')[1]
-                                if (message.body.output.includes('package:')||message.body.output.includes('(packages/')) {
+                                if (message.body.output.includes('package:') || message.body.output.includes('(packages/')) {
                                     findPackage = filePath.split('/')[0];
                                 }
                                 let fullPath = ""
@@ -78,10 +87,39 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                     let packages = value.packages
                                     let packageRef
                                     for (let p of packages) {
+                                        const resourceUri = vscode.window.activeTextEditor?.document.uri;
+                                        // Load global and workspace configurations
+                                        const globalConfig = vscode.workspace.getConfiguration('FlutterLoggerEasyLife');
+                                        const workspaceConfig = vscode.workspace.getConfiguration('FlutterLoggerEasyLife', resourceUri);
+                                        // Use workspace value if available, otherwise fall back to global value
+                                        let customPrefix = workspaceConfig.get<string>("customPrefix", '') || globalConfig.get<string>("customPrefix", '');
+                                        // Show warning message if the package is not the workspace root
+                                        if (APP.flutterPackageName != findPackage && enableWarning && customPrefix === "") {
+                                            enableWarning = false
+                                            vscode.window.showWarningMessage(`The package "${findPackage}" is not the workspace root. Please check your configuration.`,
+                                                'View ReadMe',
+                                                'Cancel').then((selection) => {
+                                                    if (selection === 'View ReadMe') {
+                                                        vscode.env.openExternal(vscode.Uri.parse("https://github.com/jack-fan1991/lazy-jack-flutter-logger-easy-life"));
+                                                    }
+                                                });
+                                            return
+                                        }
                                         if (p.name === findPackage) {
-                                            packageRef = p
-                                            fullPath = packageRef.rootUri  + packageRef.packageUri.replace('/', '')
+                                            const packageRef = p;
+                                            // Trim trailing slash if present
+                                            if (customPrefix.endsWith('/')) {
+                                                customPrefix = customPrefix.slice(0, -1);
+                                            }
 
+                                            let prefix = ""
+                                            // Support git package dependencies
+                                            if (packageRef.rootUri === "../") {
+                                                prefix = customPrefix === '' ? "../" : `${customPrefix}/${findPackage}/`
+                                            } else {
+                                                prefix = packageRef.rootUri
+                                            }
+                                            fullPath = prefix + packageRef.packageUri.replace('/', '')
                                             break
                                         }
                                     }
@@ -138,6 +176,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
 
 
 
+
 async function traverseFiles(directory: string): Promise<boolean> {
 
     let pubspec = '**/pubspec.yaml';
@@ -169,7 +208,12 @@ async function traverseFiles(directory: string): Promise<boolean> {
         }
     }
 
-
+    checkGitExtensionInYamlIfDart(false).then((yaml) => {
+        if (yaml != undefined) {
+            APP.flutterYaml = yaml
+            APP.flutterPackageName = yaml["name"]
+        }
+    })
     return true
 
 }
