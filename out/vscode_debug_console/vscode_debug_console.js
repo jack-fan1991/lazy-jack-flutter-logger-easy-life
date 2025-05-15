@@ -9,12 +9,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerDebugConsole = void 0;
+exports.registerDebugConsole = exports.APP = void 0;
 const vscode = require("vscode");
 const logger_1 = require("../utils/src/logger/logger");
 const editor_utils_1 = require("../utils/src/vscode_utils/editor_utils");
+const analyze_dart_git_dependency_1 = require("../utils/src/language_utils/dart/pubspec/analyze_dart_git_dependency");
 let dartToolPackage = new Map();
 let allFiles = [];
+let enableWarning = true;
+class APP {
+}
+exports.APP = APP;
+APP.flutterYaml = undefined;
+APP.flutterPackageName = undefined;
 function registerDebugConsole(context) {
     return __awaiter(this, void 0, void 0, function* () {
         let isDart = yield traverseFiles('.');
@@ -24,6 +31,7 @@ function registerDebugConsole(context) {
                 createDebugAdapterTracker(session) {
                     return {
                         onDidSendMessage(message) {
+                            var _a;
                             return __awaiter(this, void 0, void 0, function* () {
                                 // 检查是否是日志消息
                                 if (message.event === 'initialized') {
@@ -86,9 +94,37 @@ function registerDebugConsole(context) {
                                             let packages = value.packages;
                                             let packageRef;
                                             for (let p of packages) {
+                                                const resourceUri = (_a = vscode.window.activeTextEditor) === null || _a === void 0 ? void 0 : _a.document.uri;
+                                                // Load global and workspace configurations
+                                                const globalConfig = vscode.workspace.getConfiguration('FlutterLoggerEasyLife');
+                                                const workspaceConfig = vscode.workspace.getConfiguration('FlutterLoggerEasyLife', resourceUri);
+                                                // Use workspace value if available, otherwise fall back to global value
+                                                let customPrefix = workspaceConfig.get("customPrefix", '') || globalConfig.get("customPrefix", '');
+                                                // Show warning message if the package is not the workspace root
+                                                if (APP.flutterPackageName != findPackage && enableWarning && customPrefix === "") {
+                                                    enableWarning = false;
+                                                    vscode.window.showWarningMessage(`The package "${findPackage}" is not the workspace root. Please check your configuration.`, 'View ReadMe', 'Cancel').then((selection) => {
+                                                        if (selection === 'View ReadMe') {
+                                                            vscode.env.openExternal(vscode.Uri.parse("https://github.com/jack-fan1991/lazy-jack-flutter-logger-easy-life"));
+                                                        }
+                                                    });
+                                                    return;
+                                                }
                                                 if (p.name === findPackage) {
-                                                    packageRef = p;
-                                                    fullPath = packageRef.rootUri + packageRef.packageUri.replace('/', '');
+                                                    const packageRef = p;
+                                                    // Trim trailing slash if present
+                                                    if (customPrefix.endsWith('/')) {
+                                                        customPrefix = customPrefix.slice(0, -1);
+                                                    }
+                                                    let prefix = "";
+                                                    // Support git package dependencies
+                                                    if (packageRef.rootUri === "../") {
+                                                        prefix = customPrefix === '' ? "../" : `${customPrefix}/${findPackage}/`;
+                                                    }
+                                                    else {
+                                                        prefix = packageRef.rootUri;
+                                                    }
+                                                    fullPath = prefix + packageRef.packageUri.replace('/', '');
                                                     break;
                                                 }
                                             }
@@ -165,6 +201,12 @@ function traverseFiles(directory) {
             catch (error) {
             }
         }
+        (0, analyze_dart_git_dependency_1.checkGitExtensionInYamlIfDart)(false).then((yaml) => {
+            if (yaml != undefined) {
+                APP.flutterYaml = yaml;
+                APP.flutterPackageName = yaml["name"];
+            }
+        });
         return true;
     });
 }
