@@ -185,9 +185,9 @@ async function traverseFiles(directory: string): Promise<boolean> {
 
     let pubspecFiles = await vscode.workspace.findFiles(pubspec, '{**/.symlinks/**,**/build/**,**/.dart_tool/**}')
 
-    if (pubspecFiles.length > 1) {
-        pubspecFiles = pubspecFiles.filter((e) => e.path.includes('example') == false)
-    }
+    // if (pubspecFiles.length > 1) {
+    //     pubspecFiles = pubspecFiles.filter((e) => e.path.includes('example') == false)
+    // }
     if (pubspecFiles.length == 0) {
         return false
     }

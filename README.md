@@ -21,15 +21,6 @@
 ![](./image/logger/obs_logger_good.png)
 
 
-
-### How to support when debug the TestPackage/example/lib/main.dart
-
-* Do not import all package project
-    * ![](./image/logger/bad.png)
-
-* Just import example 
-    *  ![](./image/logger/good.png)
-
 ### Multi-level Workspace Support
 
 This extension now supports multi-level workspace structures, handling complex project organizations:
@@ -56,9 +47,19 @@ foo
 └── flutterProject2
 ```
 
+* support example/
+```
+flutterPackageProject
+├── .vscode/settings.json
+├── example/
+└── lib/
+└── pubspec.yaml
+```
+
 #### Settings Example
 
 ```json
+// If run subfolder project add this
 // .vscode/settings.json
 {
     "FlutterLoggerEasyLife.customPrefix": "./"
