@@ -1,0 +1,27 @@
+# Node.js dependencies
+/node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+
+# IDE files (optional)
+.idea/
+
+/out/
