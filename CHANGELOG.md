@@ -1,3 +1,7 @@
+# 0.0.8 
+- Feature Multi-level Workspace Support
+- See More: https://github.com/jack-fan1991/lazy-jack-flutter-logger-easy-life/blob/master/README.md
+
 # 0.0.8
 - Replaced `..//` with `../` in debug output path rewriting to ensure correct and cross-platform file paths.
 

@@ -65,4 +65,12 @@ foo
 }
 ```
 
+💡 Set up your workspace like this:
+*	Open the foo directory as the VSCode root.
+*	Run your Flutter project from a subfolder (e.g., flutterProject/).
+*	Set "./" as the customPrefix in your settings.
+	*	This instructs the extension to treat "../" as referring to the correct subproject directory (e.g., ./flutterProject).
+	*	For example, an import like ../common/logger.dart will be correctly resolved as ./flutterProject/common/logger.dart, depending on your folder structure.
+
+
 #### If help you, please give me a star. Thanks you so much
