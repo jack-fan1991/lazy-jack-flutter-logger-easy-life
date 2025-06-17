@@ -28,11 +28,11 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.debug.onDidStartDebugSession(async (session) => {
         const cwd = session.configuration.cwd;
         if (!cwd) {
-            showWarning('Debug session started without a CWD (current working directory). Cannot analyze project.');
+            // showWarning('Debug session started without a CWD (current working directory). Cannot analyze project.');
             return;
         }
 
-        logInfo(`Debug session started for project at: ${cwd}`);
+        logInfo(`Debug session started path: ${cwd}`);
         sessionPath = cwd;
 
         // 啟動時，對專案進行一次分析
@@ -217,7 +217,7 @@ async function traverseProject(projectDirectory: string): Promise<boolean> {
 
     } catch (error: any) {
         if (error.code === 'FileNotFound') {
-            showWarning(`Could not find 'pubspec.yaml' or '.dart_tool/package_config.json' in ${projectDirectory}. Please run 'pub get'.`);
+            // showWarning(`Could not find 'pubspec.yaml' or '.dart_tool/package_config.json' in ${projectDirectory}. Please run 'pub get'.`);
         } else {
             logError(`Failed to traverse project at ${projectDirectory}. Error: ${error.message}`, false);
         }

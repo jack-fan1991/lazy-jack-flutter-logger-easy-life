@@ -1,3 +1,6 @@
+# 0.0.15
+- Silenced unnecessary warnings
+
 # 0.0.14
 - Improved extension performance by reducing redundant path resolution.
 - Optimized file scanning logic for better runtime efficiency.
