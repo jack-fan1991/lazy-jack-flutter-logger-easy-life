@@ -1,3 +1,13 @@
+
+# 0.0.13
+### 🛠 Breaking Changes
+- Removed the setting `"FlutterLoggerEasyLife.customPrefix"` from `settings.json`.
+
+### ✨ New Features
+- Added automatic detection of the working directory during debug sessions.
+- No need to manually configure `"customPrefix"` anymore.
+
+
 # 0.0.10
 - Feature Support run subfolder project as Example/
 - See More: https://github.com/jack-fan1991/lazy-jack-flutter-logger-easy-life/blob/master/README.md
