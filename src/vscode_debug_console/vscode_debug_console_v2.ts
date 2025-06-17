@@ -1,24 +1,33 @@
 import * as vscode from 'vscode';
-import { logError, logInfo, showWarning } from '../utils/src/logger/logger';
+import * as path from 'path';
+import { logError, logInfo ,showWarning} from '../utils/src/logger/logger';
 import { getYAMLFileContent, readFileToText } from '../utils/src/vscode_utils/editor_utils';
 import { checkGitExtensionInYamlIfDart } from '../utils/src/language_utils/dart/pubspec/analyze_dart_git_dependency';
-import * as path from 'path';
+
 // --- 全域狀態管理 ---
-let dartToolPackage = new Map<String, any>()
-let projectLibAbsPath = new Map<String, String>()
-let sessionPath = ""
-let sessionToolConfigPath = ""
-let sessionProjectPackageName = ""
+// 使用 Map 來儲存不同專案的配置，雖然目前只處理一個 session，但這樣設計更具擴展性
+const dartToolPackage = new Map<string, any>();
+const projectLibAbsPath = new Map<string, string>();
+let sessionPath = "";
+let sessionToolConfigPath = "";
+let sessionProjectPackageName = "";
+let workspaceRootPath = ""; // 工作區根目錄，用於計算相對路徑
+
 // 檔案監聽器
 let pubspecWatcher: vscode.FileSystemWatcher | undefined;
 
-let workspaceRootPath = ""
+// 用於 UI 展示或跨模組通訊
 export class APP {
     public static flutterYaml: any | undefined = undefined;
     public static flutterPackageName: any | undefined = undefined;
 }
 
-export async function registerDebugConsole(context: vscode.ExtensionContext) {
+
+/**
+ * 註冊偵錯相關的監聽器和功能
+ * @param context Extension 上下文，用於管理 Disposables
+ */
+export function registerDebugConsole(context: vscode.ExtensionContext) {
     if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
         workspaceRootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
         logInfo(`Workspace root detected: ${workspaceRootPath}`);
@@ -48,126 +57,21 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('*', {
         createDebugAdapterTracker(session: vscode.DebugSession) {
             return {
-                async onDidSendMessage(message: any) {
+                onDidSendMessage(message: any) {
                     // 只處理有 sessionPath 的情況
                     if (!sessionPath) return;
+
                     // 核心邏輯：攔截並修改包含 'package:' 的輸出日誌
                     if (message.type === 'event' && message.event === 'output' && (message.body.category === 'stdout' || message.body.category === 'console')) {
-                        // 检查消息内容中是否包含 'package:' 前缀
                         if (message.body.output.includes('packages/') || message.body.output.includes('package:')) {
-                            let pattern = /(?:\d+\s+)?([\w/.-]+)\s+(\d+):(\d+)/;
-                            /(?:\d+\s+)?([\w/.-]+)\s+(\d+)(?::(\d+))?/
-                            if (message.body.output.includes('package:')) {
-                                pattern = /package:([\w/.-]+):(\d+)(?::(\d+))?/;
-                            }
-                            if (message.body.output.includes('(packages/')) {
-                                pattern = /packages:([\w/.-]+):(\d+)(?::(\d+))?/;
-                            }
-                            // 使用正则表达式匹配字符串
-                            const match = message.body.output.match(pattern);
-                            // 提取匹配到的子串
-                            let filePath = '';
-                            let lineNumber = '';
-                            let columnNumber = '';
-                            if (match) {
-                                filePath = match[1];
-                                lineNumber = match[2];
-                                columnNumber = match[3];
-                            }
-                            if (filePath === '') {
-                                logError(`not fount ${message.body.output}`, false)
-                                return
-                            }
-                            let findPackage = filePath.split('/')[1]
-                            if (message.body.output.includes('package:') || message.body.output.includes('(packages/')) {
-                                findPackage = filePath.split('/')[0];
-                            }
-                            let fullPath = ""
-                            for (let key of dartToolPackage.keys()) {
-                                let value = dartToolPackage.get(key)
-                                let packages = value.packages
-                                let packageRef
-                                for (let p of packages) {
-                                    const resourceUri = vscode.window.activeTextEditor?.document.uri;
-
-                                    if (p.name === findPackage) {
-                                        const packageRef = p;
-                                        if (packageRef.rootUri === "../") {
-                                            let absPath = projectLibAbsPath.get(findPackage)
-                                            const relative = path.relative(workspaceRootPath, absPath as string);
-                                            if (relative === "") {
-                                                fullPath = "./lib"
-                                            } else {
-                                                fullPath = "./" + relative + "/" + "lib/"
-                                            }
-                                        }
-                                        // local package
-                                        else if (packageRef.rootUri.startsWith("../")) {
-                                            const absPath = path.resolve(sessionPath, packageRef.rootUri.replace("../", ""));
-                                            fullPath = absPath + "/lib"
-                                        }
-                                        else {
-                                            fullPath = packageRef.rootUri + "/lib"
-                                        }
-
-                                    }
-                                }
-
-                            }
-                            if (fullPath === "") {
-                                return
-                            }
-                            let newOutput = ''
-                            if (message.body.output.includes(`packages/${findPackage}`)) {
-                                newOutput = message.body.output.replace(`packages/${findPackage}`, ` ${fullPath}`)
-                            } else {
-                                newOutput = message.body.output.replace(`package:${findPackage}`, ` ${fullPath}`)
-                            }
-                            newOutput = newOutput.replace(` ${lineNumber}:${columnNumber}`, `:${lineNumber}:${columnNumber}`)
-                            message.body.output = newOutput
-                            // vscode.debug.activeDebugConsole.appendLine(message.body.output);
-                            // console.log(message.body.output)
-
-
+                            transformPackagePath(message);
                         }
                     }
                 }
             };
         }
-    }
-    )
-    );
-
-
+    }));
 }
-
-
-
-let refreshTimeout: NodeJS.Timeout | undefined = undefined;
-
-/**
- * 防抖 (Debounce) 函式，避免在短時間內重複觸發刷新。
- * @param projectDirectory 需要刷新的專案目錄
- */
-function scheduleRefresh(projectDirectory: string, context: vscode.ExtensionContext) {
-    if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-    }
-
-    refreshTimeout = setTimeout(async () => {
-        logInfo('Change detected, refreshing project configuration...');
-        const success = await traverseProject(projectDirectory);
-        if (success) {
-            // 刷新成功後，需要重新設定監聽器，以防萬一檔案路徑改變
-            // 雖然此處路徑不變，但這是個好習慣
-            setupFileWatcher(projectDirectory, sessionToolConfigPath, context);
-            logInfo('✅ Refresh completed.');
-        }
-    }, 1000); // 延遲1秒執行，等待檔案系統穩定
-}
-
-
-
 
 /**
  * [優化核心] 直接分析指定目錄的專案結構，而不是全域搜尋。
@@ -225,7 +129,81 @@ async function traverseProject(projectDirectory: string): Promise<boolean> {
     }
 }
 
+/**
+ * 修改偵錯輸出訊息，將 package: 路徑轉換為可點擊的絕對/相對檔案路徑。
+ * @param message 來自 Debug Adapter 的原始訊息
+ */
+function transformPackagePath(message: any) {
+    // 正則表達式匹配 'package:...' 或 '(packages/...'
+    const patterns = [
+        /package:([\w/.-]+):(\d+):(\d+)/,
+        /\(packages\/([\w/.-]+)\s+(\d+):(\d+)\)/,
+        /(?:\d+\s+)?([\w/.-]+)\s+(\d+):(\d+)/ // 備用
+    ];
+    
+    let match;
+    for (const p of patterns) {
+        match = message.body.output.match(p);
+        if (match) break;
+    }
 
+    if (!match) return;
+
+    const [originalMatch, filePath, lineNumber, columnNumber] = match;
+    // const packageName = filePath.split('/')[0];
+    const findPackage = filePath.split('/')[1]
+    const projectConfig = dartToolPackage.get(sessionProjectPackageName);
+    if (!projectConfig || !projectConfig.packages) return;
+
+    const packageInfo = projectConfig.packages.find((p: any) => p.name === findPackage);
+    if (!packageInfo) return;
+
+    let libPath: string;
+    const rootUri = packageInfo.rootUri as string;
+    
+    // 根據 rootUri 的類型解析 package 的 lib 目錄路徑
+    if (rootUri.startsWith('file://')) {
+        // 絕對路徑 (通常是 pub 快取)
+        libPath = vscode.Uri.parse(rootUri).fsPath;
+    } else {
+        // 相對路徑 (通常是 monorepo 中的本地依賴)
+        libPath = path.resolve(sessionPath, rootUri);
+    }
+    
+    // 拼接出完整的檔案系統路徑
+    const fullFilePath = path.join(libPath, 'lib', filePath.substring(findPackage.length + 1));
+
+    // 替換原始輸出
+    const replacement = `${fullFilePath}:${lineNumber}:${columnNumber}`;
+    
+    message.body.output = message.body.output.replace(originalMatch, replacement);
+}
+
+
+// --- 檔案監聽與刷新邏輯 ---
+
+let refreshTimeout: NodeJS.Timeout | undefined = undefined;
+
+/**
+ * 防抖 (Debounce) 函式，避免在短時間內重複觸發刷新。
+ * @param projectDirectory 需要刷新的專案目錄
+ */
+function scheduleRefresh(projectDirectory: string, context: vscode.ExtensionContext) {
+    if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+    }
+
+    refreshTimeout = setTimeout(async () => {
+        logInfo('Change detected, refreshing project configuration...');
+        const success = await traverseProject(projectDirectory);
+        if (success) {
+            // 刷新成功後，需要重新設定監聽器，以防萬一檔案路徑改變
+            // 雖然此處路徑不變，但這是個好習慣
+            setupFileWatcher(projectDirectory, sessionToolConfigPath, context);
+            logInfo('✅ Refresh completed.');
+        }
+    }, 1000); // 延遲1秒執行，等待檔案系統穩定
+}
 
 /**
  * [優化核心] 設定一個監聽器，只監聽指定的單一檔案。
@@ -243,7 +221,7 @@ function setupFileWatcher(projectDirectory: string, configPathToWatch: string, c
         showWarning("Cannot set up file watcher: configuration path is not defined.");
         return;
     }
-
+    
     logInfo(`Setting up file watcher for: ${configPathToWatch}`);
 
     // 建立一個只針對特定檔案的監聽器，效率極高
