@@ -2,7 +2,7 @@
   "name": "lazy-jack-flutter-logger-easy-life",
   "displayName": "LazyJ Colorful Logger",
   "description": "A colorful logging enhancer for VSCode debug console.",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "publisher": "jackFan",
   "icon": "image/lazy_man.png",
   "homepage": "https://marketplace.visualstudio.com/items?itemName=jackFan.lazy-jack-flutter-logger-easy-life",
@@ -32,14 +32,42 @@
   "contributes": {
     "snippets": [],
     "configuration": {
-      "title": "Flutter Logger Easy Life",
+      "title": "Flutter LazyJ Colorful Logger",
       "type": "object",
       "properties": {
-        "FlutterLoggerEasyLife.customPrefix": {
+        "FlutterLoggerEasyLife.relativePathMode": {
           "type": "string",
-          "default": "",
-          "description": "Custom prefix for resolving file paths in debug logs.",
+          "enum": [
+            "session",
+            "workspace",
+            "always",
+            "never"
+          ],
+          "default": "workspace",
+          "description": "Control how file paths appear in logs: session (session project only); workspace (any workspace folder); always (all paths relative); never (always absolute).",
           "scope": "resource"
+        },
+        "FlutterLoggerEasyLife.showEmoji": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to prefix log file paths with emojis based on their origin (e.g. 📦 for package, 🎯 for current session project)."
+        },
+        "FlutterLoggerEasyLife.emojiMap": {
+          "type": "object",
+          "default": {
+            "session": "🎯",
+            "pub": "📦",
+            "sdk": "🔧"
+          },
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Custom emoji mapping for different path types such as session, pub."
+        },
+        "FlutterLoggerEasyLife.silent": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suppress all logger output when enabled."
         }
       }
     }

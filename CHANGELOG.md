@@ -1,3 +1,21 @@
+### 0.0.16
+- **Relative Path Modes**:  
+  Added `relativePathMode` setting with four options:  
+  - `session`: Relative path only for the current session project  
+  - `workspace`: Relative path for all workspace folders  
+  - `always`: Convert all paths to relative  
+  - `never`: Always display absolute paths  
+
+- **Emoji Prefix**:  
+  Introduced `showEmoji` and `emojiMap` settings to customize emojis for log paths  
+  - Default: 🎯 (session), 📦 (pub packages)  
+
+- **Custom Emoji Mapping**:  
+  Users can now define their own emojis for different path types using `emojiMap`  
+
+- **Support local package**: 
+    - support hot reload in local package
+
 # 0.0.15
 - Silenced unnecessary warnings
 

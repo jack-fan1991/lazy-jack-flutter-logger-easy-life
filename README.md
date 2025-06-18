@@ -20,3 +20,37 @@
 * with extension you can tap absolute path to code line
 ![](./image/logger/obs_logger_good.png)
 
+
+
+### ✅ Emoji Prefix
+
+- Visual indicators for logs:
+  - `🎯` — Session (current project)
+  - `📦` — Pub package
+- Fully customizable via `emojiMap`.
+
+### ✅ Relative Path Modes
+
+Control how file paths appear in logs:
+- `'session'` — Only session project uses relative paths
+- `'workspace'` — All workspace folders use relative paths
+- `'always'` — All paths converted to relative
+- `'never'` — Always show absolute paths
+
+---
+
+## ⚙️ Settings
+
+In your `settings.json`:
+
+```json
+{
+  "FlutterLoggerEasyLife.relativePathMode": "session",
+  "FlutterLoggerEasyLife.showEmoji": true,
+  "FlutterLoggerEasyLife.emojiMap": {
+    "session": "🎯",
+    "pub": "📦"
+  },
+  "FlutterLoggerEasyLife.silent": false
+}
+```
