@@ -37,11 +37,11 @@ export function loadConfig(): ConfigState {
         globalConfig.get<boolean>('showEmoji') ??
         true; // fallback to default
 
-    const emojiMap =
-        workspaceConfig.get<Record<string, string>>('emojiMap') ??
-        globalConfig.get<Record<string, string>>('emojiMap') ??
-        defaultEmojiMap;
-
+    const emojiMap = {
+        ...defaultEmojiMap,
+        ...globalConfig.get<Record<string, string>>('emojiMap'),
+        ...workspaceConfig.get<Record<string, string>>('emojiMap'),
+    };
     const silent =
         workspaceConfig.get<boolean>('silent') ??
         globalConfig.get<boolean>('silent') ??
@@ -59,6 +59,5 @@ const defaultEmojiMap: Record<string, string> = {
     session: "🎯",
     sdk: "🔧",
     pub: "📦",
-    test: "🧪",
-    example: "📘"
+    local: "🧩",
 };

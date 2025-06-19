@@ -186,10 +186,14 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                             }
                             let newOutput = ''
                             const isSdk = message.body.output.includes("packages/flutter") || message.body.output.includes("dart:core");
+                            const isLocal= isLocalPackage(absPath)
+                            logInfo(`${absPath} is local${isLocal} $`)
                             if (config.showEmoji) {
                                 let emoji = sessionProjectLog ? config.emojiMap["session"] : config.emojiMap["pub"]
                                 if (isSdk) {
                                     emoji = config.emojiMap["sdk"]
+                                }else if(isLocal){
+                                    emoji = config.emojiMap["local"]
                                 }
                                 fullPath = `${emoji} │ ${fullPath}`
                             }
@@ -391,8 +395,8 @@ export function toFileUri(absolutePath: string): string {
 }
 
 
-function isLocalPackage(pkg: DartPackage): boolean {
-    return !pkg.rootUri.includes('.pub-cache') && !pkg.rootUri.includes('packages/flutter');
+function isLocalPackage(path: String): boolean {
+    return !path.includes('.pub-cache') && !path.includes('packages/flutter');
 }
 
 function disposeWatchers(watchers: vscode.FileSystemWatcher[]) {
@@ -406,7 +410,7 @@ export async function watchPackageConfigs(packageConfig: PackageConfig) {
         if (pkg.name === "utils") {
             let a
         }
-        if (!isLocalPackage(pkg)) continue;
+        if (!isLocalPackage(pkg.rootUri)) continue;
         let absPath = pkg.rootUri;
         if (pkg.rootUri.startsWith("..")) {
             absPath = path.resolve(sessionPath, pkg.rootUri.replace("../", ""));

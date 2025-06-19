@@ -38,19 +38,40 @@ Control how file paths appear in logs:
 - `'never'` — Always show absolute paths
 
 ---
-
 ## ⚙️ Settings
 
-In your `settings.json`:
+Customize how file paths and emojis are displayed in logs via `settings.json`.
+
+---
+
+### 🔧 Emoji Map (`FlutterLoggerEasyLife.emojiMap`)
+
+Defines the emoji prefix for different file source types:
+
+| Key       | Description                                          | Default Emoji |
+|-----------|------------------------------------------------------|----------------|
+| `session` | Files from the currently active project              | 🎯             |
+| `sdk`     | Files from the Flutter SDK                           | 🔧             |
+| `pub`     | Packages from [pub.dev](https://pub.dev)             | 📦             |
+| `local`   | Locally defined path packages (e.g., `../mypkg`)     | 🧩             |
+
+You can override these in your VSCode settings.
+
+---
+
+### 🔧 Example Configuration
 
 ```json
+// settings.json
 {
-  "FlutterLoggerEasyLife.relativePathMode": "session",
+  "FlutterLoggerEasyLife.relativePathMode": "workspace",
   "FlutterLoggerEasyLife.showEmoji": true,
+  "FlutterLoggerEasyLife.silent": false,
   "FlutterLoggerEasyLife.emojiMap": {
     "session": "🎯",
-    "pub": "📦"
-  },
-  "FlutterLoggerEasyLife.silent": false
+    "sdk": "🔧",
+    "pub": "📦",
+    "local": "🧩"
+  }
 }
 ```
