@@ -195,7 +195,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                 }else if(isLocal){
                                     emoji = config.emojiMap["local"]
                                 }
-                                fullPath = `${emoji} │ ${fullPath}`
+                                fullPath = `${emoji} ${fullPath}`
                             }
                             if (message.body.output.includes(`packages/${findPackage}`)) {
                                 newOutput = message.body.output.replace(`packages/${findPackage}/`, ` ${fullPath}`)
