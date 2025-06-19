@@ -185,17 +185,19 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                 return
                             }
                             let newOutput = ''
-                            const isSdk = message.body.output.includes("packages/flutter") || message.body.output.includes("dart:core");
-                            const isLocal= isLocalPackage(absPath)
+                            const isSdk = absPath.includes("packages/flutter") || absPath.includes("dart:core");
+                            const isLocal = isLocalPackage(absPath)
+
                             logInfo(`${absPath} is local${isLocal} $`)
                             if (config.showEmoji) {
                                 let emoji = sessionProjectLog ? config.emojiMap["session"] : config.emojiMap["pub"]
                                 if (isSdk) {
                                     emoji = config.emojiMap["sdk"]
-                                }else if(isLocal){
+                                } else if (isLocal) {
                                     emoji = config.emojiMap["local"]
                                 }
-                                fullPath = `${emoji} ${fullPath}`
+                                const prefix = checkHashNumberInFirstHalf( message.body.output)
+                                fullPath = `${prefix}${emoji} ${fullPath}`
                             }
                             if (message.body.output.includes(`packages/${findPackage}`)) {
                                 newOutput = message.body.output.replace(`packages/${findPackage}/`, ` ${fullPath}`)
@@ -239,6 +241,27 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
         console.log('Updated files:', allFiles);
     });
 
+}
+
+function checkHashNumberInFirstHalf(line: string): string  {
+  // 找出 #number 的位置和數字
+  const regex = /#(\d+)/g;
+  let match: RegExpExecArray | null;
+
+  // 只找出第一個出現的 #number
+  match = regex.exec(line);
+  if (!match) return "";
+
+  const hashIndex = match.index;
+  const num = parseInt(match[1], 10);
+
+  // 判斷 #number 是否出現在字串前半段
+  if (hashIndex <= line.length / 2) {
+    if (num < 10) {
+      return " ";
+    }
+  }
+  return "";
 }
 
 async function updateFiles() {
