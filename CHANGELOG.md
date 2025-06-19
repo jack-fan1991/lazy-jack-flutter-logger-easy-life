@@ -1,3 +1,13 @@
+### 0.0.17
+- **Improved log readability**
+  - Added better formatting for stack trace lines  
+  - Aligned emoji and spacing for clearer structure  
+
+- **Emoji map updates and documentation**
+  - Added `local` type to default emoji map (🧩)
+  - Updated `settings.json` example with a complete emoji map
+
+
 ### 0.0.16
 - **Relative Path Modes**:  
   Added `relativePathMode` setting with four options:  

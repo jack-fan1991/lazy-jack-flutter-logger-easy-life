@@ -18,7 +18,7 @@ let pubspecWatcher: vscode.FileSystemWatcher | undefined;
 let workspaceRootPath = ""
 let silent = true
 const watchers: vscode.FileSystemWatcher[] = [];
-
+let dartSdkPath = ""
 let allFiles: string[] = [];
 export class APP {
     public static flutterYaml: any | undefined = undefined;
@@ -86,6 +86,11 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                     // 核心邏輯：攔截並修改包含 'package:' 的輸出日誌
                     if (message.type === 'event' && message.event === 'output' && (message.body.category === 'stdout' || message.body.category === 'console')) {
                         // 检查消息内容中是否包含 'package:' 前缀
+                        const dartFileMatch = extractDartFiles(message.body.output)
+                        const datFile = dartFileMatch[0]
+                        const label = getStackPatternLabel(message.body.output)
+                        const config = loadConfig()
+
                         if (message.body.output.includes('packages/') || message.body.output.includes('package:')) {
                             let pattern = /(?:\d+\s+)?([\w/.-]+)\s+(\d+):(\d+)/;
                             /(?:\d+\s+)?([\w/.-]+)\s+(\d+)(?::(\d+))?/
@@ -95,17 +100,13 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                             if (message.body.output.includes('(packages/')) {
                                 pattern = /packages:([\w/.-]+):(\d+)(?::(\d+))?/;
                             }
-                            // 使用正则表达式匹配字符串
-                            const match = message.body.output.match(pattern);
+                            let output = message.body.output
+                            const ansiRegex = /\x1b\[[0-9;]*m/g;
+                            const cleanOutput = message.body.output.replace(ansiRegex, '');
+                            const info = extractStackInfo(cleanOutput, pattern);
+                            if (info == null) return
                             // 提取匹配到的子串
-                            let filePath = '';
-                            let lineNumber = '';
-                            let columnNumber = '';
-                            if (match) {
-                                filePath = match[1];
-                                lineNumber = match[2];
-                                columnNumber = match[3];
-                            }
+                            let filePath = info?.path;
                             if (filePath === '') {
                                 logError(`not fount ${message.body.output}`, false)
                                 return
@@ -116,7 +117,6 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                             }
                             let absPath = '';
                             let fullPath = '';
-                            const config = loadConfig()
                             silent = config.silent
                             const relativePathMode = config.relativePathMode
                             let sessionProjectLog = false
@@ -185,31 +185,134 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                 return
                             }
                             let newOutput = ''
-                            const isSdk = absPath.includes("packages/flutter") || absPath.includes("dart:core");
+                            const isSdk = absPath.includes("packages/flutter") || absPath.includes("dart:core") || message.body.output.includes("dart-sdk/lib/_internal/js_dev_runtime");
                             const isLocal = isLocalPackage(absPath)
-
-                            logInfo(`${absPath} is local${isLocal} $`)
-                            if (config.showEmoji) {
+                            const prefix = checkHashNumberInFirstHalf(message.body.output)
+                            const target = `${datFile}:${info.line}:${info.column}`
+                            const newPath = datFile.replace(`package:${findPackage}/`, `${fullPath}`)
+                            newOutput = output
+                                .replace(`${target}`, `${newPath}:${info.line}:${info.column}`)
+                            if (config.showEmoji && label != null) {
                                 let emoji = sessionProjectLog ? config.emojiMap["session"] : config.emojiMap["pub"]
                                 if (isSdk) {
                                     emoji = config.emojiMap["sdk"]
-                                } else if (isLocal) {
+                                } else if (isLocal && !sessionProjectLog) {
                                     emoji = config.emojiMap["local"]
                                 }
-                                const prefix = checkHashNumberInFirstHalf( message.body.output)
-                                fullPath = `${prefix}${emoji} ${fullPath}`
+                                newOutput = newOutput.replace(` ${label}`, ` ${label} ${prefix}${emoji}`)
                             }
-                            if (message.body.output.includes(`packages/${findPackage}`)) {
-                                newOutput = message.body.output.replace(`packages/${findPackage}/`, ` ${fullPath}`)
-                            } else {
-                                newOutput = message.body.output.replace(`package:${findPackage}/`, ` ${fullPath}`)
-                            }
-                            newOutput = newOutput.replace(` ${lineNumber}:${columnNumber}`, `:${lineNumber}:${columnNumber}`)
                             message.body.output = newOutput
                             // vscode.debug.activeDebugConsole.appendLine(message.body.output);
                             // console.log(message.body.output)
 
 
+                        } else if ((hasStackPattern(message.body.output))) {
+
+                            if (dartFileMatch.length > 0) {
+                                const emoji = config.showEmoji ? config.emojiMap["sdk"] : ""
+                                const prefix = checkHashNumberInFirstHalf(message.body.output)
+                                let newOutput = ""
+                                let output = message.body.output
+                                // web
+                                if (message.body.output.includes('dart-sdk/lib/_internal')) {
+                                    let linePositionPattern = /(?:\d+\s+)?([\w/.-]+)\s+(\d+):(\d+)/;
+                                    /(?:\d+\s+)?([\w/.-]+)\s+(\d+)(?::(\d+))?/
+                                    const info = extractStackInfo(output, linePositionPattern);
+                                    if (info) {
+                                        let sdkPath = `${dartSdkPath}/${info.path}`;
+                                        const filePath = fileURLToPath(sdkPath);
+                                        const relativePath = path.relative(workspaceRootPath, filePath);
+                                        const isSubdirectory = filePath.startsWith(workspaceRootPath);
+                                        const isSessionSubdirectory = filePath.startsWith(sessionPath);
+                                        let relativePathMode = config.relativePathMode
+                                        if (relativePathMode === 'always' ||
+                                            (relativePathMode === 'workspace' && isSubdirectory) ||
+                                            (relativePathMode === 'session' && isSessionSubdirectory)) {
+                                            sdkPath = `./${relativePath}`;
+                                        }
+                                        newOutput = message.body
+                                            .replace(info.path, `${prefix}${emoji} ${sdkPath}`)
+                                            .replace(` ${info.line}:${info.column}`, `:${info.line}:${info.column}`);
+                                    }
+                                }
+                                // mobile
+                                else if (message.body.output.includes('dart:core-patch/')) {
+                                    let linePositionPattern = /\(([^)]+):(\d+):(\d+)\)/
+                                    let output = message.body.output
+                                    const ansiRegex = /\x1b\[[0-9;]*m/g;
+                                    const cleanOutput = message.body.output.replace(ansiRegex, '');
+                                    const info = extractStackInfo(cleanOutput, linePositionPattern);
+                                    const label = getStackPatternLabel(output)
+                                    if (info) {
+                                        let sdkPath = dartSdkPath + "/dart-sdk/lib/_internal/vm/lib/" + info.path.replace('dart:core-patch/', "")
+                                        const filePath = fileURLToPath(sdkPath);
+                                        const relativePath = path.relative(workspaceRootPath, filePath);
+                                        const isSubdirectory = filePath.startsWith(workspaceRootPath);
+                                        const isSessionSubdirectory = filePath.startsWith(sessionPath);
+                                        let relativePathMode = config.relativePathMode
+                                        if (relativePathMode === 'always' ||
+                                            (relativePathMode === 'workspace' && isSubdirectory) ||
+                                            (relativePathMode === 'session' && isSessionSubdirectory)) {
+                                            sdkPath = `./${relativePath}`;
+                                        }
+                                        newOutput = output
+                                            .replace(`${info.path}:${info.line}:${info.column}`, `${sdkPath}:${info.line}:${info.column}`)
+
+                                        if (label != null) {
+                                            newOutput = newOutput.replace(label, `${label} ${prefix}${emoji}`)
+                                        }
+                                    }
+                                } else if (message.body.output.includes('dart:core/')) {
+                                    let linePositionPattern = /\(([^)]+):(\d+):(\d+)\)/
+                                    let output = message.body.output
+                                    const ansiRegex = /\x1b\[[0-9;]*m/g;
+                                    const cleanOutput = message.body.output.replace(ansiRegex, '');
+                                    const info = extractStackInfo(cleanOutput, linePositionPattern);
+                                    const label = getStackPatternLabel(output)
+                                    if (info) {
+                                        let sdkPath = dartSdkPath + "dart-sdk/lib/core/" + info.path.replace('dart:core/', "")
+                                        const filePath = fileURLToPath(sdkPath);
+                                        const relativePath = path.relative(workspaceRootPath, filePath);
+                                        const isSubdirectory = filePath.startsWith(workspaceRootPath);
+                                        const isSessionSubdirectory = filePath.startsWith(sessionPath);
+                                        let relativePathMode = config.relativePathMode
+                                        if (relativePathMode === 'always' ||
+                                            (relativePathMode === 'workspace' && isSubdirectory) ||
+                                            (relativePathMode === 'session' && isSessionSubdirectory)) {
+                                            sdkPath = `./${relativePath}`;
+                                        }
+                                        newOutput = output
+                                            .replace(`${info.path}:${info.line}:${info.column}`, `${sdkPath}:${info.line}:${info.column}`)
+                                        if (label != null) {
+                                            newOutput = newOutput.replace(label, `${label} ${prefix}${emoji}`)
+                                        }
+
+                                    }
+                                }
+                                // has #prefix and includes ".dart"
+                                else {
+                                    const label = getStackPatternLabel(message.body.output)
+                                    const prefix = checkHashNumberInFirstHalf(message.body.output)
+                                    newOutput = output
+                                        .replace(`${path}`, `${path}`)
+                                    if (label != null) {
+                                        newOutput = newOutput.replace(label, `${label} ${prefix}${emoji}`)
+                                    }
+                                }
+                                message.body.output = newOutput
+                            } else if (label != null && config.showEmoji) {
+                                // let linePositionPattern = /\(([^)]+):(\d+):(\d+)\)/
+                                // const ansiRegex = /\x1b\[[0-9;]*m/g;
+                                const output = message.body.output
+                                // const cleanOutput = output.replace(ansiRegex, '');
+                                const prefix = checkHashNumberInFirstHalf(output)
+                                // const emoji = config.showEmoji ? config.emojiMap["sdk"] : ""
+                                // const info = extractStackInfo(cleanOutput, linePositionPattern);
+                                const fullWidthSpace = '\u3000';
+                                let newOutput = output.replace(label, `${label} ${prefix}${fullWidthSpace}`);
+                                message.body.output = newOutput
+
+                            }
                         }
                     }
                 }
@@ -218,7 +321,6 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
     }
     )
     );
-    // 监听文件系统事件
     vscode.workspace.onDidRenameFiles(async event => {
         console.log('Files renamed.');
         // 更新文件列表
@@ -242,26 +344,92 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
     });
 
 }
+interface StackInfo {
+    path: string;
+    line: string;
+    column: string;
+}
 
-function checkHashNumberInFirstHalf(line: string): string  {
-  // 找出 #number 的位置和數字
-  const regex = /#(\d+)/g;
-  let match: RegExpExecArray | null;
+function extractStackInfo(output: string, pattern: RegExp): StackInfo | null {
+    const match = output.match(pattern);
+    if (!match) return null;
 
-  // 只找出第一個出現的 #number
-  match = regex.exec(line);
-  if (!match) return "";
+    return {
+        path: match[1],
+        line: match[2],
+        column: match[3]
+    };
+}
 
-  const hashIndex = match.index;
-  const num = parseInt(match[1], 10);
+function hasStackPattern(line: string): boolean {
+    line = cleanLine(line)
+    const regex = /#(\d+)/g;
+    let match: RegExpExecArray | null;
 
-  // 判斷 #number 是否出現在字串前半段
-  if (hashIndex <= line.length / 2) {
-    if (num < 10) {
-      return " ";
+    match = regex.exec(line);
+    if (!match) return false;
+
+    const hashIndex = match.index;
+    const num = parseInt(match[1], 10);
+
+    if (hashIndex <= line.length / 2) {
+        return true;
     }
-  }
-  return "";
+    return false;
+}
+
+function cleanLine(line: string) {
+    const bar = "│"
+    if (line.includes(bar)) {
+        return line
+            .split(bar)
+            .slice(1)
+            .join(bar)
+            .trim();
+    } else {
+        return line
+    }
+}
+
+function getStackPatternLabel(line: string): string | null {
+    line = cleanLine(line)
+    const regex = /#(\d+)/g;
+    let match: RegExpExecArray | null;
+
+    match = regex.exec(line);
+    if (!match) return null;
+
+    const hashIndex = match.index;
+    const num = parseInt(match[1], 10);
+
+    // 判斷 #number 是否出現在字串前半段
+    if (hashIndex <= line.length / 2) {
+        return `#${num}`;
+    }
+    return null;
+}
+
+function checkHashNumberInFirstHalf(line: string): string | null {
+    line = cleanLine(line)
+    const regex = /#(\d+)/g;
+    let match: RegExpExecArray | null;
+
+    match = regex.exec(line);
+    if (!match) return null;
+
+    const hashIndex = match.index;
+    const num = parseInt(match[1], 10);
+
+    if (hashIndex <= line.length / 2 && num < 10) {
+        return " ";
+    }
+    return "";
+}
+
+function extractDartFiles(log: string): string[] {
+    const regex = /\b\S+\.dart\b/g;
+    const matches = log.match(regex);
+    return matches ?? [];
 }
 
 async function updateFiles() {
@@ -433,6 +601,9 @@ export async function watchPackageConfigs(packageConfig: PackageConfig) {
         if (pkg.name === "utils") {
             let a
         }
+        if (pkg.rootUri.includes("dart-sdk/pkg")) {
+            dartSdkPath = pkg.rootUri.split("dart-sdk")[0]
+        }
         if (!isLocalPackage(pkg.rootUri)) continue;
         let absPath = pkg.rootUri;
         if (pkg.rootUri.startsWith("..")) {
@@ -483,13 +654,13 @@ async function runFlutterPubGet() {
 function findTerminalAndActivate(name: string, pwd: string): vscode.Terminal {
     const terminal = vscode.window.terminals.find(t => t.name == name);
     if (terminal) {
-        terminal.show();
+        // terminal.show();
         return terminal;
     }
     else {
         const newTerminal = vscode.window.createTerminal(name);
         newTerminal.sendText(`cd ${sessionPath}`)
-        newTerminal.show();
+        // newTerminal.show();
         return newTerminal;
     }
 }
