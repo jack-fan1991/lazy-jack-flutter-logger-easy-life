@@ -21,14 +21,6 @@
 ![](./image/logger/obs_logger_good.png)
 
 
-
-### ✅ Emoji Prefix
-
-- Visual indicators for logs:
-  - `🎯` — Session (current project)
-  - `📦` — Pub package
-- Fully customizable via `emojiMap`.
-
 ### ✅ Relative Path Modes
 
 Control how file paths appear in logs:
