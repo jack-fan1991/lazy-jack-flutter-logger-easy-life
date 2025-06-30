@@ -10,6 +10,8 @@ import { runTerminal } from '../utils/src/terminal_utils/terminal_utils';
 // --- 全域狀態管理 ---
 let dartToolPackage = new Map<String, any>()
 let projectLibAbsPath = new Map<String, String>()
+// --- 快取 ---
+let pathCache = new Map<string, { fullPath: string, absPath: string, sessionProjectLog: boolean }>();
 let sessionPath = ""
 let sessionToolConfigPath = ""
 let sessionProjectPackageName = ""
@@ -115,71 +117,83 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                             if (message.body.output.includes('package:') || message.body.output.includes('(packages/')) {
                                 findPackage = filePath.split('/')[0];
                             }
+                            
+                            // --- 快取路徑解析 ---
+                            const cacheKey = findPackage;
+                            let cachedPath = pathCache.get(cacheKey);
+                            
                             let absPath = '';
                             let fullPath = '';
-                            silent = config.silent
-                            const relativePathMode = config.relativePathMode
-                            let sessionProjectLog = false
-                            for (let key of dartToolPackage.keys()) {
-                                let value = dartToolPackage.get(key)
-                                let packages = value.packages
-                                let packageRef
-                                for (let packageRef of packages) {
-                                    if (packageRef.name === findPackage) {
+                            let sessionProjectLog = false;
 
-                                        // Handle session project
-                                        if (packageRef.rootUri === "../") {
-                                            let absPath = projectLibAbsPath.get(findPackage) as string
-                                            const relativePath = path.relative(workspaceRootPath, absPath);
-                                            const sessionOnRoot = relativePath == ""
-                                            sessionProjectLog = true
-                                            switch (relativePathMode) {
-                                                case 'session':
-                                                case 'workspace':
-                                                case 'always':
-                                                    fullPath = sessionOnRoot ? './lib/' : `./${relativePath}/lib/`;
-                                                    break;
-                                                case 'never':
-                                                default:
-                                                    fullPath = `${toFileUri(absPath)}/lib/`;
+                            if (cachedPath) {
+                                fullPath = cachedPath.fullPath;
+                                absPath = cachedPath.absPath;
+                                sessionProjectLog = cachedPath.sessionProjectLog;
+                            } else {
+                                silent = config.silent
+                                const relativePathMode = config.relativePathMode
+                                for (let key of dartToolPackage.keys()) {
+                                    let value = dartToolPackage.get(key)
+                                    let packages = value.packages
+                                    for (let packageRef of packages) {
+                                        if (packageRef.name === findPackage) {
+    
+                                            // Handle session project
+                                            if (packageRef.rootUri === "../") {
+                                                absPath = projectLibAbsPath.get(findPackage) as string
+                                                const relativePath = path.relative(workspaceRootPath, absPath);
+                                                const sessionOnRoot = relativePath == ""
+                                                sessionProjectLog = true
+                                                switch (relativePathMode) {
+                                                    case 'session':
+                                                    case 'workspace':
+                                                    case 'always':
+                                                        fullPath = sessionOnRoot ? './lib/' : `./${relativePath}/lib/`;
+                                                        break;
+                                                    case 'never':
+                                                    default:
+                                                        fullPath = `${toFileUri(absPath)}/lib/`;
+                                                }
+    
                                             }
-
-                                        }
-                                        // Session relative dependency
-                                        else if (packageRef.rootUri.startsWith("../")) {
-                                            absPath = path.resolve(sessionPath, packageRef.rootUri.replace("../", ""));
-                                            sessionProjectLog = false;
-                                            const relativePath = path.relative(workspaceRootPath, absPath);
-
-                                            const isSubdirectory = absPath.includes(workspaceRootPath);
-                                            if (relativePathMode === 'never') {
-                                                fullPath = `${toFileUri(absPath)}/lib/`;
-                                            } else if (relativePathMode === 'workspace' && !isSubdirectory) {
-                                                fullPath = `${toFileUri(absPath)}/lib/`;
+                                            // Session relative dependency
+                                            else if (packageRef.rootUri.startsWith("../")) {
+                                                absPath = path.resolve(sessionPath, packageRef.rootUri.replace("../", ""));
+                                                sessionProjectLog = false;
+                                                const relativePath = path.relative(workspaceRootPath, absPath);
+    
+                                                const isSubdirectory = absPath.includes(workspaceRootPath);
+                                                if (relativePathMode === 'never') {
+                                                    fullPath = `${toFileUri(absPath)}/lib/`;
+                                                } else if (relativePathMode === 'workspace' && !isSubdirectory) {
+                                                    fullPath = `${toFileUri(absPath)}/lib/`;
+                                                }
+                                                else {
+                                                    fullPath = `./${relativePath}/lib/`;
+                                                }
                                             }
                                             else {
-                                                fullPath = `./${relativePath}/lib/`;
+                                                absPath = packageRef.rootUri;
+                                                const filePath = fileURLToPath(absPath);
+                                                const relativePath = path.relative(workspaceRootPath, filePath);
+                                                const isSubdirectory = filePath.startsWith(workspaceRootPath);
+                                                const isSessionSubdirectory = filePath.startsWith(sessionPath);
+                                                sessionProjectLog = false;
+                                                if (relativePathMode === 'always' ||
+                                                    (relativePathMode === 'workspace' && isSubdirectory) ||
+                                                    (relativePathMode === 'session' && isSessionSubdirectory)) {
+                                                    fullPath = `./${relativePath}/lib/`;
+                                                } else {
+                                                    fullPath = `${absPath}/lib/`;
+                                                }
                                             }
+                                            pathCache.set(cacheKey, { fullPath, absPath, sessionProjectLog });
+                                            break; // Found package, exit inner loop
                                         }
-                                        else {
-                                            absPath = packageRef.rootUri;
-                                            const filePath = fileURLToPath(absPath);
-                                            const relativePath = path.relative(workspaceRootPath, filePath);
-                                            const isSubdirectory = filePath.startsWith(workspaceRootPath);
-                                            const isSessionSubdirectory = filePath.startsWith(sessionPath);
-                                            sessionProjectLog = false;
-                                            if (relativePathMode === 'always' ||
-                                                (relativePathMode === 'workspace' && isSubdirectory) ||
-                                                (relativePathMode === 'session' && isSessionSubdirectory)) {
-                                                fullPath = `./${relativePath}/lib/`;
-                                            } else {
-                                                fullPath = `${absPath}/lib/`;
-                                            }
-                                        }
-
                                     }
+                                    if(fullPath !== '') break; // Found package, exit outer loop
                                 }
-
                             }
                             if (fullPath === "") {
                                 return
@@ -321,26 +335,20 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
     }
     )
     );
-    vscode.workspace.onDidRenameFiles(async event => {
-        console.log('Files renamed.');
-        // 更新文件列表
-        await updateFiles();
-        console.log('Updated files:', allFiles);
+    vscode.workspace.onDidRenameFiles(event => {
+        console.log('Files renamed, scheduling update.');
+        scheduleUpdateFiles();
     });
 
-    vscode.workspace.onDidCreateFiles(async event => {
-        console.log('Files renamed.');
-        // 更新文件列表
-        await updateFiles();
-        console.log('Updated files:', allFiles);
+    vscode.workspace.onDidCreateFiles(event => {
+        console.log('Files created, scheduling update.');
+        scheduleUpdateFiles();
     });
 
 
-    vscode.workspace.onDidDeleteFiles(async event => {
-        console.log('Files deleted.');
-        // 更新文件列表
-        await updateFiles();
-        console.log('Updated files:', allFiles);
+    vscode.workspace.onDidDeleteFiles(event => {
+        console.log('Files deleted, scheduling update.');
+        scheduleUpdateFiles();
     });
 
 }
@@ -432,6 +440,17 @@ function extractDartFiles(log: string): string[] {
     return matches ?? [];
 }
 
+function scheduleUpdateFiles() {
+    if (updateFilesTimeout) {
+        clearTimeout(updateFilesTimeout);
+    }
+    updateFilesTimeout = setTimeout(async () => {
+        console.log('Updating file list due to debounced event.');
+        await updateFiles();
+        console.log('Updated files:', allFiles);
+    }, 500); // 500ms delay
+}
+
 async function updateFiles() {
     allFiles = []
     await vscode.workspace.findFiles('**/*.dart').then((files) => {
@@ -442,6 +461,7 @@ async function updateFiles() {
 }
 
 let refreshTimeout: NodeJS.Timeout | undefined = undefined;
+let updateFilesTimeout: NodeJS.Timeout | undefined = undefined;
 
 /**
  * 防抖 (Debounce) 函式，避免在短時間內重複觸發刷新。
@@ -511,6 +531,7 @@ async function traverseProject(projectDirectory: string): Promise<boolean> {
         // 4. 清理並更新全域狀態
         dartToolPackage.clear();
         projectLibAbsPath.clear();
+        pathCache.clear();
 
         sessionProjectPackageName = pubspecContent['name'];
         sessionToolConfigPath = packageConfigPath;
