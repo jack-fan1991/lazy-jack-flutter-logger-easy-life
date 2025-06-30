@@ -117,11 +117,11 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                             if (message.body.output.includes('package:') || message.body.output.includes('(packages/')) {
                                 findPackage = filePath.split('/')[0];
                             }
-                            
+
                             // --- 快取路徑解析 ---
                             const cacheKey = findPackage;
                             let cachedPath = pathCache.get(cacheKey);
-                            
+
                             let absPath = '';
                             let fullPath = '';
                             let sessionProjectLog = false;
@@ -138,7 +138,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                     let packages = value.packages
                                     for (let packageRef of packages) {
                                         if (packageRef.name === findPackage) {
-    
+
                                             // Handle session project
                                             if (packageRef.rootUri === "../") {
                                                 absPath = projectLibAbsPath.get(findPackage) as string
@@ -155,14 +155,14 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                                     default:
                                                         fullPath = `${toFileUri(absPath)}/lib/`;
                                                 }
-    
+
                                             }
                                             // Session relative dependency
                                             else if (packageRef.rootUri.startsWith("../")) {
                                                 absPath = path.resolve(sessionPath, packageRef.rootUri.replace("../", ""));
                                                 sessionProjectLog = false;
                                                 const relativePath = path.relative(workspaceRootPath, absPath);
-    
+
                                                 const isSubdirectory = absPath.includes(workspaceRootPath);
                                                 if (relativePathMode === 'never') {
                                                     fullPath = `${toFileUri(absPath)}/lib/`;
@@ -192,7 +192,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                             break; // Found package, exit inner loop
                                         }
                                     }
-                                    if(fullPath !== '') break; // Found package, exit outer loop
+                                    if (fullPath !== '') break; // Found package, exit outer loop
                                 }
                             }
                             if (fullPath === "") {
@@ -203,9 +203,17 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                             const isLocal = isLocalPackage(absPath)
                             const prefix = checkHashNumberInFirstHalf(message.body.output)
                             const target = `${datFile}:${info.line}:${info.column}`
-                            const newPath = datFile.replace(`package:${findPackage}/`, `${fullPath}`)
-                            newOutput = output
-                                .replace(`${target}`, `${newPath}:${info.line}:${info.column}`)
+                            const wabTarget = `${datFile} ${info.line}:${info.column}`
+                            let newPath = datFile.replace(`package:${findPackage}/`, `${fullPath}`)
+                            if (output.includes(wabTarget)) {
+                                newPath = datFile.replace(`packages/${findPackage}/`, `${fullPath}`)
+                                newOutput = output
+                                    .replace(`${wabTarget}`, `${newPath}:${info.line}:${info.column}`)
+                            } else {
+                                newPath = datFile.replace(`package:${findPackage}/`, `${fullPath}`)
+                                newOutput = output
+                                    .replace(`${target}`, `${newPath}:${info.line}:${info.column}`)
+                            }
                             if (config.showEmoji && label != null) {
                                 let emoji = sessionProjectLog ? config.emojiMap["session"] : config.emojiMap["pub"]
                                 if (isSdk) {
@@ -234,19 +242,29 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                                     const info = extractStackInfo(output, linePositionPattern);
                                     if (info) {
                                         let sdkPath = `${dartSdkPath}/${info.path}`;
-                                        const filePath = fileURLToPath(sdkPath);
-                                        const relativePath = path.relative(workspaceRootPath, filePath);
-                                        const isSubdirectory = filePath.startsWith(workspaceRootPath);
-                                        const isSessionSubdirectory = filePath.startsWith(sessionPath);
-                                        let relativePathMode = config.relativePathMode
-                                        if (relativePathMode === 'always' ||
-                                            (relativePathMode === 'workspace' && isSubdirectory) ||
-                                            (relativePathMode === 'session' && isSessionSubdirectory)) {
-                                            sdkPath = `./${relativePath}`;
+                                        try {
+                                            const filePath = fileURLToPath(sdkPath);
+                                            const relativePath = path.relative(workspaceRootPath, filePath);
+                                            const isSubdirectory = filePath.startsWith(workspaceRootPath);
+                                            const isSessionSubdirectory = filePath.startsWith(sessionPath);
+                                            let relativePathMode = config.relativePathMode
+                                            if (relativePathMode === 'always' ||
+                                                (relativePathMode === 'workspace' && isSubdirectory) ||
+                                                (relativePathMode === 'session' && isSessionSubdirectory)) {
+                                                sdkPath = `./${relativePath}`;
+                                            }
+                                            newOutput = output
+                                                .replace(info.path, `${prefix}${emoji} ${sdkPath}`)
+                                                .replace(` ${info.line}:${info.column}`, `:${info.line}:${info.column}`);
+                                            message.body.output = newOutput
+                                        } catch {
+                                            if (label != null) {
+                                                const fullWidthSpace = '\u3000';
+                                                newOutput = output.replace(label, `${label} ${prefix}${emoji}`)
+                                                message.body.output = newOutput
+                                            }
                                         }
-                                        newOutput = message.body
-                                            .replace(info.path, `${prefix}${emoji} ${sdkPath}`)
-                                            .replace(` ${info.line}:${info.column}`, `:${info.line}:${info.column}`);
+
                                     }
                                 }
                                 // mobile
