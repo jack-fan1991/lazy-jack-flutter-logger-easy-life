@@ -1,3 +1,15 @@
+### 0.0.18
+- **Performance Optimization**:
+  - Implemented path resolution caching to reduce redundant calculations.
+  - Debounced file update events to minimize excessive file scanning.
+- **Path Resolution Enhancements**:
+  - Improved support for `package:` and `packages/` URI schemes.
+  - More robust handling of relative paths and Dart SDK paths.
+- **Bug Fixes**:
+  - Corrected path replacement errors.
+- **Code Quality**:
+  - General code formatting and error handling improvements.
+
 ### 0.0.17
 - **Improved log readability**
   - Added better formatting for stack trace lines  

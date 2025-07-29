@@ -70,7 +70,10 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                     // 只處理有 sessionPath 的情況
                     if (!sessionPath) return;
                     // Normalize and rewrite file paths in build-time error messages
-                    if (message.type === 'event' && message.event === 'output') {
+                    const handleRuntimeResponse = message.type === "response"
+                    const handleDebugOutput = message.type === 'event' && message.event === 'output' && (message.body.category === 'stdout' || message.body.category === 'console')
+                    const handleLaunch = message.type === 'event' && message.event === 'output'
+                    if (handleLaunch) {
                         const pattern = /([\w/.-]+):(\d+):(\d+)/;
                         const match = message.body.output.match(pattern);
                         let filePath = '';
@@ -86,7 +89,7 @@ export async function registerDebugConsole(context: vscode.ExtensionContext) {
                         }
                     }
                     // 核心邏輯：攔截並修改包含 'package:' 的輸出日誌
-                    if (message.type === 'event' && message.event === 'output' && (message.body.category === 'stdout' || message.body.category === 'console')) {
+                    if (handleDebugOutput || handleRuntimeResponse) {
                         // 检查消息内容中是否包含 'package:' 前缀
                         const dartFileMatch = extractDartFiles(message.body.output)
                         const datFile = dartFileMatch[0]

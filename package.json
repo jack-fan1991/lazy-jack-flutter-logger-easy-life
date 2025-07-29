@@ -2,7 +2,7 @@
   "name": "lazy-jack-flutter-logger-easy-life",
   "displayName": "LazyJ Colorful Logger",
   "description": "A colorful logging enhancer for VSCode debug console.",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "publisher": "jackFan",
   "icon": "image/lazy_man.png",
   "homepage": "https://marketplace.visualstudio.com/items?itemName=jackFan.lazy-jack-flutter-logger-easy-life",
