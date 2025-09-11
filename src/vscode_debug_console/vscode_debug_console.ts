@@ -659,6 +659,10 @@ export async function watchPackageConfigs(packageConfig: PackageConfig) {
             continue;
         }
 
+        if (localPath.includes(`${path.sep}.fvm${path.sep}`)) {
+            continue;
+        }
+
         const configPath = path.join(localPath, '.dart_tool', 'package_config.json');
 
         if (!fs.existsSync(configPath)) continue;
