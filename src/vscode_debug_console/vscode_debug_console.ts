@@ -640,13 +640,15 @@ function disposeWatchers(watchers: vscode.FileSystemWatcher[]) {
 export async function watchPackageConfigs(packageConfig: PackageConfig) {
     disposeWatchers(watchers)
     for (const pkg of packageConfig.packages) {
-        if (pkg.name === "utils") {
-            let a
+        // 
+        if (pkg.rootUri.includes(".fvm")||pkg.rootUri.includes("/fvm/")|| pkg.rootUri.includes('.pub-cache') && !pkg.rootUri.includes('packages/flutter')) {
+            logInfo(`Ignoring .fvm package: ${pkg.name} at ${pkg.rootUri}`);
+            continue;
         }
+
         if (pkg.rootUri.includes("dart-sdk/pkg")) {
             dartSdkPath = pkg.rootUri.split("dart-sdk")[0]
         }
-        if (!isLocalPackage(pkg.rootUri)) continue;
         let absPath = pkg.rootUri;
         if (pkg.rootUri.startsWith("..")) {
             absPath = path.resolve(sessionPath, pkg.rootUri.replace("../", ""));
@@ -658,11 +660,6 @@ export async function watchPackageConfigs(packageConfig: PackageConfig) {
             console.warn(`Invalid URI: ${pkg.rootUri}`);
             continue;
         }
-
-        if (localPath.includes(`${path.sep}.fvm${path.sep}`)) {
-            continue;
-        }
-
         const configPath = path.join(localPath, '.dart_tool', 'package_config.json');
 
         if (!fs.existsSync(configPath)) continue;
