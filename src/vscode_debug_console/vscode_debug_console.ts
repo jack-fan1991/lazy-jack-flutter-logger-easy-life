@@ -640,7 +640,7 @@ function disposeWatchers(watchers: vscode.FileSystemWatcher[]) {
 export async function watchPackageConfigs(packageConfig: PackageConfig) {
     disposeWatchers(watchers)
     for (const pkg of packageConfig.packages) {
-        // 
+        
         if (pkg.rootUri.includes(".fvm")||pkg.rootUri.includes("/fvm/")|| pkg.rootUri.includes('.pub-cache') && !pkg.rootUri.includes('packages/flutter')) {
             logInfo(`Ignoring .fvm package: ${pkg.name} at ${pkg.rootUri}`);
             continue;
@@ -668,19 +668,15 @@ export async function watchPackageConfigs(packageConfig: PackageConfig) {
         logInfo(`creating watcher for package_config.json in ${pkg.name} at ${configPath}`);
         const delayMs = 5000;
 
-        watcher.onDidChange(() => {
-            throttleRun(pkg.name, delayMs, async () => {
-                console.log(`[FlutterLogger] package_config.json changed in ${pkg.name}, running pub get`);
+        const handleFileChange = () => {
+            throttleRun("flutter-pub-get", delayMs, async () => {
+                console.log(`[FlutterLogger] A dependency's package_config.json changed, triggering 'flutter pub get' in the root project.`);
                 await runFlutterPubGet();
             });
-        });
+        };
 
-        watcher.onDidCreate(() => {
-            throttleRun(pkg.name, delayMs, async () => {
-                console.log(`[FlutterLogger] package_config.json created in ${pkg.name}, running pub get`);
-                await runFlutterPubGet();
-            });
-        });
+        watcher.onDidChange(handleFileChange);
+        watcher.onDidCreate(handleFileChange);
 
         watchers.push(watcher);
     }
