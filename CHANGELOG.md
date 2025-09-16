@@ -1,3 +1,9 @@
+### 0.0.22
+- **Stability**:
+  - Added a filter to ignore invalid `../` package paths in the file watcher, improving stability.
+- **Logging**:
+  - Included the package name in the log message when a dependency change triggers `flutter pub get` to improve debuggability.
+
 ### 0.0.18
 - **Performance Optimization**:
   - Implemented path resolution caching to reduce redundant calculations.
